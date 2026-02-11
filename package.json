@@ -1,0 +1,10 @@
+{
+  "name": "mine-world",
+  "version": "1.0.0",
+  "description": "MineWorld — Tap-to-Mine Idle Game Telegram Mini App",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve ."
+  },
+  "dependencies": {}
+}

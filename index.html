@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MineWorld</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+--bg:#1a1a2e;--bg2:#16213e;--bg3:#0f3460;
+--text:#e0e0e0;--text2:#8a8a9a;
+--green:#5a8f3c;--green2:#4a7a2f;
+--gold:#ffd700;--red:#e74c3c;--blue:#3498db;
+--stone:#888;--wood:#8B4513
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:'Courier New',monospace;touch-action:none}
+canvas{display:block;position:absolute;top:0;left:0;z-index:1}
+
+/* Overlays */
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,20,0.95)}
+.hidden{display:none!important}
+
+/* Title Screen */
+#titleScreen{background:linear-gradient(180deg,#1a1a2e 0%,#0d1117 50%,#1a1a2e 100%)}
+.title-logo{font-size:42px;font-weight:bold;color:var(--green);text-shadow:0 0 20px rgba(90,143,60,0.5),0 4px 0 #2d5a1e;letter-spacing:3px;margin-bottom:8px}
+.title-sub{font-size:14px;color:var(--text2);margin-bottom:30px}
+.title-pick{font-size:64px;margin-bottom:20px}
+.menu-btn{width:220px;padding:14px;margin:6px;border:2px solid var(--green);background:rgba(90,143,60,0.15);color:var(--green);font-family:inherit;font-size:16px;font-weight:bold;cursor:pointer;text-transform:uppercase;letter-spacing:2px;transition:all 0.2s}
+.menu-btn:active{background:var(--green);color:#fff;transform:scale(0.96)}
+
+/* Biome Map */
+#biomeMap{background:linear-gradient(180deg,#0d1117,#1a1a2e)}
+.biome-list{width:90%;max-width:360px;display:flex;flex-direction:column;gap:10px;margin-top:20px;max-height:60vh;overflow-y:auto;padding:10px}
+.biome-node{display:flex;align-items:center;gap:12px;padding:14px;border:2px solid #333;background:rgba(30,30,50,0.8);cursor:pointer;transition:all 0.2s}
+.biome-node.active{border-color:var(--green);background:rgba(90,143,60,0.15)}
+.biome-node.locked{opacity:0.4;cursor:default}
+.biome-icon{font-size:32px;width:44px;text-align:center}
+.biome-info{flex:1}
+.biome-name{font-size:16px;font-weight:bold;color:var(--text)}
+.biome-desc{font-size:11px;color:var(--text2);margin-top:2px}
+.biome-lock{font-size:10px;color:var(--red);margin-top:2px}
+
+/* Crafting Screen */
+#craftScreen{background:rgba(10,10,20,0.97)}
+.craft-grid{width:92%;max-width:380px;display:flex;flex-direction:column;gap:8px;max-height:65vh;overflow-y:auto;padding:8px}
+.craft-item{display:flex;align-items:center;gap:10px;padding:12px;border:2px solid #333;background:rgba(30,30,50,0.8)}
+.craft-item.available{border-color:var(--green);cursor:pointer}
+.craft-item.owned{border-color:var(--gold);opacity:0.7}
+.craft-item.locked{opacity:0.35}
+.craft-icon{font-size:28px;width:40px;text-align:center}
+.craft-info{flex:1}
+.craft-name{font-size:14px;font-weight:bold}
+.craft-cost{font-size:11px;color:var(--text2);margin-top:2px}
+.craft-stat{font-size:11px;color:var(--green);margin-top:2px}
+.craft-btn{padding:8px 14px;border:2px solid var(--green);background:rgba(90,143,60,0.2);color:var(--green);font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer}
+.craft-btn:active{background:var(--green);color:#fff}
+
+/* Building Screen */
+#buildScreen{background:rgba(10,10,20,0.97)}
+.build-grid{width:92%;max-width:380px;display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:65vh;overflow-y:auto;padding:8px}
+.build-card{padding:12px;border:2px solid #333;background:rgba(30,30,50,0.8);text-align:center;cursor:pointer;transition:all 0.2s}
+.build-card.available{border-color:var(--green)}
+.build-card.maxed{border-color:var(--gold)}
+.build-icon{font-size:28px;margin-bottom:4px}
+.build-name{font-size:12px;font-weight:bold}
+.build-level{font-size:11px;color:var(--gold);margin:2px 0}
+.build-bonus{font-size:10px;color:var(--green)}
+.build-cost{font-size:10px;color:var(--text2);margin-top:4px}
+
+/* Shop Screen */
+#shopScreen{background:rgba(10,10,20,0.97)}
+.shop-tabs{display:flex;gap:4px;margin:10px 0;flex-wrap:wrap;justify-content:center}
+.shop-tab{padding:8px 12px;border:1px solid #444;background:rgba(40,40,60,0.6);color:var(--text2);font-family:inherit;font-size:11px;cursor:pointer;font-weight:bold}
+.shop-tab.active{border-color:var(--green);color:var(--green);background:rgba(90,143,60,0.15)}
+.shop-items{width:92%;max-width:380px;display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;padding:8px}
+.shop-item{display:flex;align-items:center;gap:10px;padding:12px;border:2px solid #333;background:rgba(30,30,50,0.8)}
+.shop-icon{font-size:24px;width:36px;text-align:center}
+.shop-info{flex:1}
+.shop-name{font-size:13px;font-weight:bold}
+.shop-desc{font-size:10px;color:var(--text2);margin-top:2px}
+.shop-buy{padding:8px 12px;border:2px solid var(--gold);background:rgba(255,215,0,0.1);color:var(--gold);font-family:inherit;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap}
+.shop-buy:active{background:var(--gold);color:#000}
+
+/* Leaderboard */
+#leaderboardScreen{background:rgba(10,10,20,0.97)}
+.lb-tabs{display:flex;gap:4px;margin:10px 0}
+.lb-tab{padding:8px 16px;border:1px solid #444;background:rgba(40,40,60,0.6);color:var(--text2);font-family:inherit;font-size:12px;cursor:pointer;font-weight:bold}
+.lb-tab.active{border-color:var(--blue);color:var(--blue);background:rgba(52,152,219,0.15)}
+.lb-list{width:92%;max-width:380px;max-height:60vh;overflow-y:auto;padding:8px}
+.lb-entry{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #222}
+.lb-rank{width:28px;font-size:16px;font-weight:bold;text-align:center}
+.lb-name{flex:1;font-size:13px}
+.lb-score{font-size:13px;font-weight:bold;color:var(--gold)}
+
+/* Settings */
+#settingsScreen{background:rgba(10,10,20,0.97)}
+.settings-list{width:80%;max-width:320px;display:flex;flex-direction:column;gap:12px;margin-top:20px}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid #333;background:rgba(30,30,50,0.5)}
+.setting-label{font-size:14px}
+.setting-toggle{width:50px;height:28px;border:2px solid #555;background:#333;cursor:pointer;position:relative;border-radius:0}
+.setting-toggle.on{border-color:var(--green);background:rgba(90,143,60,0.4)}
+.setting-toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#888;transition:all 0.2s}
+.setting-toggle.on::after{left:24px;background:var(--green)}
+
+/* Offline Reward */
+#offlineScreen{background:rgba(10,10,20,0.97)}
+.offline-title{font-size:20px;font-weight:bold;color:var(--gold);margin-bottom:10px}
+.offline-time{font-size:14px;color:var(--text2);margin-bottom:20px}
+.offline-rewards{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.offline-row{font-size:16px;color:var(--green)}
+
+/* Boss Fight HUD */
+.boss-bar{position:fixed;top:8px;left:5%;width:90%;z-index:5;pointer-events:none}
+.boss-name{font-size:14px;font-weight:bold;color:var(--red);text-align:center;text-shadow:0 0 8px rgba(231,76,60,0.5)}
+.boss-hp-bg{width:100%;height:16px;background:#333;border:2px solid #555;margin-top:4px}
+.boss-hp-fill{height:100%;background:var(--red);transition:width 0.2s}
+.boss-timer{font-size:12px;color:var(--gold);text-align:center;margin-top:4px}
+
+/* Daily Reward */
+#dailyScreen{background:rgba(10,10,20,0.97)}
+.daily-title{font-size:22px;font-weight:bold;color:var(--gold);margin-bottom:16px}
+.daily-days{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+.daily-day{width:44px;height:56px;border:2px solid #444;background:rgba(40,40,60,0.6);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px}
+.daily-day.claimed{border-color:var(--green);background:rgba(90,143,60,0.2)}
+.daily-day.today{border-color:var(--gold);background:rgba(255,215,0,0.15)}
+.daily-day-num{font-size:9px;color:var(--text2)}
+.daily-day-reward{font-size:14px;margin-top:2px}
+
+/* Shared */
+.screen-title{font-size:22px;font-weight:bold;margin-bottom:4px}
+.back-btn{position:absolute;top:12px;left:12px;padding:8px 14px;border:2px solid #555;background:rgba(40,40,60,0.6);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;z-index:11}
+.back-btn:active{background:rgba(80,80,100,0.6)}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- Title Screen -->
+<div id="titleScreen" class="overlay">
+  <div class="title-pick">⛏️</div>
+  <div class="title-logo">MINEWORLD</div>
+  <div class="title-sub">Tap to Mine</div>
+  <button class="menu-btn" onclick="showBiomeMap()">PLAY</button>
+  <button class="menu-btn" onclick="showCrafting()">CRAFT</button>
+  <button class="menu-btn" onclick="showBuilding()">BUILD</button>
+  <button class="menu-btn" onclick="showShop()">SHOP</button>
+  <button class="menu-btn" onclick="showLeaderboard()">RANKS</button>
+  <button class="menu-btn" onclick="showSettings()">SETTINGS</button>
+  <div id="dailyBanner" style="margin-top:16px;padding:8px 16px;border:2px solid var(--gold);background:rgba(255,215,0,0.1);color:var(--gold);font-size:12px;cursor:pointer" onclick="showDailyReward()">Daily Reward Ready!</div>
+</div>
+
+<!-- Biome Map -->
+<div id="biomeMap" class="overlay hidden">
+  <button class="back-btn" onclick="showTitle()">BACK</button>
+  <div class="screen-title">Biome Map</div>
+  <div class="biome-list" id="biomeList"></div>
+</div>
+
+<!-- Crafting Screen -->
+<div id="craftScreen" class="overlay hidden">
+  <button class="back-btn" onclick="returnFromOverlay()">BACK</button>
+  <div class="screen-title">Crafting</div>
+  <div class="craft-grid" id="craftGrid"></div>
+</div>
+
+<!-- Building Screen -->
+<div id="buildScreen" class="overlay hidden">
+  <button class="back-btn" onclick="returnFromOverlay()">BACK</button>
+  <div class="screen-title">Buildings</div>
+  <div class="build-grid" id="buildGrid"></div>
+</div>
+
+<!-- Shop Screen -->
+<div id="shopScreen" class="overlay hidden">
+  <button class="back-btn" onclick="returnFromOverlay()">BACK</button>
+  <div class="screen-title">Shop</div>
+  <div class="shop-tabs" id="shopTabs"></div>
+  <div class="shop-items" id="shopItems"></div>
+</div>
+
+<!-- Leaderboard -->
+<div id="leaderboardScreen" class="overlay hidden">
+  <button class="back-btn" onclick="showTitle()">BACK</button>
+  <div class="screen-title">Leaderboard</div>
+  <div class="lb-tabs">
+    <button class="lb-tab active" onclick="loadLeaderboard('weekly',this)">Weekly</button>
+    <button class="lb-tab" onclick="loadLeaderboard('squads',this)">Squads</button>
+  </div>
+  <div class="lb-list" id="lbList"></div>
+</div>
+
+<!-- Settings -->
+<div id="settingsScreen" class="overlay hidden">
+  <button class="back-btn" onclick="returnFromOverlay()">BACK</button>
+  <div class="screen-title">Settings</div>
+  <div class="settings-list">
+    <div class="setting-row"><span class="setting-label">Sound</span><div class="setting-toggle on" id="toggleSound" onclick="toggleSetting('sound')"></div></div>
+    <div class="setting-row"><span class="setting-label">Music</span><div class="setting-toggle on" id="toggleMusic" onclick="toggleSetting('music')"></div></div>
+    <div class="setting-row"><span class="setting-label">Vibration</span><div class="setting-toggle on" id="toggleVibration" onclick="toggleSetting('vibration')"></div></div>
+  </div>
+</div>
+
+<!-- Offline Reward -->
+<div id="offlineScreen" class="overlay hidden">
+  <div class="offline-title">While you were away...</div>
+  <div class="offline-time" id="offlineTime"></div>
+  <div class="offline-rewards" id="offlineRewards"></div>
+  <button class="menu-btn" onclick="collectOffline()">COLLECT</button>
+</div>
+
+<!-- Daily Reward -->
+<div id="dailyScreen" class="overlay hidden">
+  <button class="back-btn" onclick="showTitle()">BACK</button>
+  <div class="daily-title">Daily Reward</div>
+  <div class="daily-days" id="dailyDays"></div>
+  <button class="menu-btn" id="dailyClaimBtn" onclick="claimDaily()">CLAIM</button>
+</div>
+
+<!-- Boss Intro -->
+<div id="bossIntro" class="overlay hidden">
+  <div style="font-size:64px" id="bossEmoji"></div>
+  <div style="font-size:24px;font-weight:bold;color:var(--red);margin:10px 0" id="bossIntroName"></div>
+  <div style="font-size:14px;color:var(--text2);margin-bottom:20px;text-align:center;padding:0 20px" id="bossIntroDesc"></div>
+  <button class="menu-btn" style="border-color:var(--red);color:var(--red)" onclick="startBossFight()">FIGHT!</button>
+</div>
+
+<!-- Boss Result -->
+<div id="bossResult" class="overlay hidden">
+  <div style="font-size:48px" id="bossResultEmoji"></div>
+  <div style="font-size:22px;font-weight:bold;margin:10px 0" id="bossResultTitle"></div>
+  <div style="font-size:14px;color:var(--text2);margin-bottom:20px" id="bossResultDesc"></div>
+  <button class="menu-btn" onclick="closeBossResult()">CONTINUE</button>
+</div>
+
+<script>
+// ============================================================
+// MINEWORLD — Complete Game Logic
+// ============================================================
+
+// === Telegram WebApp Integration ===
+const tg = window.Telegram?.WebApp;
+let tgUser = null;
+let tgUserId = null;
+
+if (tg) {
+  tg.ready();
+  tg.expand();
+  if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+  tgUser = tg.initDataUnsafe?.user;
+  tgUserId = tgUser?.id || 'local_' + Date.now();
+  const startParam = tg.initDataUnsafe?.start_param;
+  if (startParam && startParam.startsWith('ref_')) {
+    setTimeout(() => handleReferral(startParam.substring(4)), 1000);
+  }
+} else {
+  tgUserId = 'local_' + Date.now();
+}
+
+// === Canvas Setup ===
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+let W, H, dpr = window.devicePixelRatio || 1;
+
+function resizeCanvas() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// === Constants ===
+const BLOCK_SIZE = Math.min(120, W * 0.3);
+const BLOCK_X = () => (W - BLOCK_SIZE) / 2;
+const BLOCK_Y = () => H * 0.3;
+
+// Resource types
+const RES = {
+  dirt: 0, stone: 1, coal: 2, iron: 3, gold: 4, redstone: 5,
+  lapis: 6, diamond: 7, emerald: 8, deepslate: 9, netherrack: 10,
+  netherite: 11, quartz: 12, glowstone: 13, endstone: 14,
+  enderpearl: 15, dragonegg: 16
+};
+const RES_NAMES = ['Dirt','Stone','Coal','Iron','Gold','Redstone','Lapis','Diamond','Emerald','Deepslate','Netherrack','Netherite','Quartz','Glowstone','End Stone','Ender Pearl','Dragon Egg'];
+const RES_ICONS = ['🟫','⬜','⬛','🔶','🟡','🔴','🔵','💎','💚','🪨','🟥','⬛','⬜','🟨','🟫','🟣','🥚'];
+const RES_COLORS = ['#8B6914','#888','#333','#c87533','#ffd700','#cc0000','#2255cc','#00ccff','#00cc55','#444','#882222','#3a2a2a','#ddd','#ffee88','#e8dfc0','#8844cc','#ffccff'];
+
+// Biomes
+const BIOMES = [
+  {
+    name: 'Overworld', icon: '🌳', color: '#5a8f3c',
+    desc: 'Green pastures and shallow mines',
+    blocks: [
+      { res: RES.dirt, hp: 3, weight: 40, drops: 1 },
+      { res: RES.stone, hp: 8, weight: 35, drops: 1 },
+      { res: RES.coal, hp: 12, weight: 15, drops: 1 },
+      { res: RES.iron, hp: 20, weight: 10, drops: 1 },
+    ],
+    boss: { name: 'Zombie Horde', emoji: '🧟', hp: 500, time: 30, color: '#5a8f3c', desc: 'Reduces tap damage for 5s', mechanic: 'weaken' },
+    unlock: null
+  },
+  {
+    name: 'Deep Caves', icon: '🕳️', color: '#4a6fa5',
+    desc: 'Dark caverns with rare ores',
+    blocks: [
+      { res: RES.stone, hp: 15, weight: 30, drops: 1 },
+      { res: RES.iron, hp: 30, weight: 25, drops: 1 },
+      { res: RES.gold, hp: 50, weight: 15, drops: 1 },
+      { res: RES.redstone, hp: 40, weight: 15, drops: 2 },
+      { res: RES.lapis, hp: 45, weight: 15, drops: 2 },
+    ],
+    boss: { name: 'Cave Spider Queen', emoji: '🕷️', hp: 1500, time: 45, color: '#4a6fa5', desc: 'Slows energy regen for 8s', mechanic: 'slow' },
+    unlock: { pickaxe: 2, label: 'Stone Pickaxe' }
+  },
+  {
+    name: 'Deep Dark', icon: '🌑', color: '#2c2c54',
+    desc: 'Ancient depths, diamonds await',
+    blocks: [
+      { res: RES.deepslate, hp: 40, weight: 30, drops: 1 },
+      { res: RES.diamond, hp: 100, weight: 20, drops: 1 },
+      { res: RES.emerald, hp: 120, weight: 15, drops: 1 },
+      { res: RES.gold, hp: 60, weight: 20, drops: 1 },
+      { res: RES.iron, hp: 30, weight: 15, drops: 1 },
+    ],
+    boss: { name: 'Warden', emoji: '👹', hp: 5000, time: 60, color: '#2c2c54', desc: 'Darkness effect for 6s', mechanic: 'darkness' },
+    unlock: { pickaxe: 3, label: 'Iron Pickaxe' }
+  },
+  {
+    name: 'Nether', icon: '🔥', color: '#aa3333',
+    desc: 'Hellish realm of fire and netherite',
+    blocks: [
+      { res: RES.netherrack, hp: 20, weight: 30, drops: 1 },
+      { res: RES.netherite, hp: 200, weight: 10, drops: 1 },
+      { res: RES.quartz, hp: 80, weight: 25, drops: 2 },
+      { res: RES.glowstone, hp: 60, weight: 20, drops: 3 },
+      { res: RES.gold, hp: 50, weight: 15, drops: 1 },
+    ],
+    boss: { name: 'Wither', emoji: '💀', hp: 15000, time: 75, color: '#aa3333', desc: 'Drains HP over time', mechanic: 'wither' },
+    unlock: { pickaxe: 5, building: 'netherPortal', label: 'Diamond Pick + Nether Portal' }
+  },
+  {
+    name: 'The End', icon: '🌌', color: '#6633aa',
+    desc: 'The final dimension',
+    blocks: [
+      { res: RES.endstone, hp: 150, weight: 40, drops: 1 },
+      { res: RES.enderpearl, hp: 250, weight: 35, drops: 1 },
+      { res: RES.dragonegg, hp: 500, weight: 25, drops: 1 },
+    ],
+    boss: { name: 'Ender Dragon', emoji: '🐉', hp: 50000, time: 90, color: '#6633aa', desc: 'Un-tappable zones for 5s', mechanic: 'void' },
+    unlock: { pickaxe: 6, building: 'enderPortal', label: 'Netherite Pick + Ender Portal' }
+  }
+];
+
+// Pickaxes
+const PICKAXES = [
+  { name: 'Bare Hands', icon: '✊', damage: 1, recipe: null },
+  { name: 'Wooden Pickaxe', icon: '🪓', damage: 3, recipe: { [RES.dirt]: 20 } },
+  { name: 'Stone Pickaxe', icon: '⛏️', damage: 8, recipe: { [RES.stone]: 50, [RES.dirt]: 30 } },
+  { name: 'Iron Pickaxe', icon: '⛏️', damage: 20, recipe: { [RES.iron]: 30, [RES.stone]: 80 } },
+  { name: 'Gold Pickaxe', icon: '⛏️', damage: 15, recipe: { [RES.gold]: 25, [RES.iron]: 40 } },
+  { name: 'Diamond Pickaxe', icon: '⛏️', damage: 50, recipe: { [RES.diamond]: 15, [RES.iron]: 50, [RES.gold]: 20 } },
+  { name: 'Netherite Pickaxe', icon: '⛏️', damage: 120, recipe: { [RES.netherite]: 10, [RES.diamond]: 20, [RES.gold]: 30 } },
+];
+
+// Buildings
+const BUILDINGS = {
+  house:         { name: 'House',           icon: '🏠', maxLevel: 10, bonus: '+10% worker efficiency/lvl', baseCost: { [RES.dirt]: 50, [RES.stone]: 30 }, costMult: 1.8 },
+  farm:          { name: 'Farm',            icon: '🌾', maxLevel: 10, bonus: '+5 max energy/lvl',          baseCost: { [RES.dirt]: 40, [RES.stone]: 20 }, costMult: 1.8 },
+  enchantTable:  { name: 'Enchanting Table',icon: '🔮', maxLevel: 10, bonus: '+5% crit chance/lvl',        baseCost: { [RES.diamond]: 3, [RES.stone]: 100 }, costMult: 2.0 },
+  netherPortal:  { name: 'Nether Portal',   icon: '🟪', maxLevel: 1,  bonus: 'Unlocks Nether',            baseCost: { [RES.diamond]: 10, [RES.iron]: 50 }, costMult: 1 },
+  enderPortal:   { name: 'Ender Portal',    icon: '🌀', maxLevel: 1,  bonus: 'Unlocks The End',           baseCost: { [RES.enderpearl]: 12, [RES.diamond]: 20 }, costMult: 1 },
+  beacon:        { name: 'Beacon',          icon: '🔦', maxLevel: 10, bonus: '+10% all income/lvl',        baseCost: { [RES.diamond]: 5, [RES.gold]: 20, [RES.iron]: 40 }, costMult: 2.0 },
+  mineShaft:     { name: 'Mine Shaft',      icon: '🏗️', maxLevel: 10, bonus: '+1 worker capacity/lvl',    baseCost: { [RES.iron]: 20, [RES.stone]: 60 }, costMult: 1.8 },
+  furnace:       { name: 'Furnace',         icon: '🔥', maxLevel: 5,  bonus: 'Smelt resources',           baseCost: { [RES.stone]: 40, [RES.coal]: 20 }, costMult: 1.5 },
+};
+
+// Daily rewards (7 days)
+const DAILY_REWARDS = [
+  { [RES.stone]: 100 },
+  { [RES.stone]: 150, [RES.iron]: 10 },
+  { [RES.stone]: 200, [RES.iron]: 20, [RES.coal]: 15 },
+  { [RES.stone]: 300, [RES.iron]: 30, [RES.gold]: 5 },
+  { [RES.stone]: 400, [RES.gold]: 15, [RES.diamond]: 1 },
+  { [RES.stone]: 500, [RES.gold]: 20, [RES.diamond]: 3 },
+  { [RES.stone]: 1000, [RES.diamond]: 5, [RES.gold]: 30 },
+];
+
+// === Game State ===
+let state = {
+  screen: 'title',
+  resources: new Array(17).fill(0),
+  pickaxe: 0,
+  biome: 0,
+  blockHP: 0,
+  blockMaxHP: 0,
+  blockType: -1,
+  blocksMined: 0,
+  totalBlocksMined: 0,
+  energy: 100,
+  maxEnergy: 100,
+  lastEnergyTime: Date.now(),
+
+  // Buildings
+  buildings: {},
+
+  // Workers
+  workers: 0,
+  maxWorkers: 1,
+  lastOfflineTime: Date.now(),
+
+  // Boss
+  isBoss: false,
+  bossHP: 0,
+  bossMaxHP: 0,
+  bossTimer: 0,
+  bossTimerMax: 0,
+  bossAttackTimer: 0,
+  bossDefeated: [false, false, false, false, false],
+  bossEffect: null,
+  bossEffectTimer: 0,
+
+  // Enchantments (purchased)
+  enchEfficiency: 0,
+  enchFortune: 0,
+  enchSilkTouch: false,
+
+  // Boosts
+  speedBoostEnd: 0,
+  autoTapEnd: 0,
+
+  // Skins
+  skins: [],
+  activeSkin: null,
+
+  // Progression
+  biomesUnlocked: [true, false, false, false, false],
+  endPassUsed: false,
+
+  // Social
+  referrals: 0,
+  weeklyScore: 0,
+  squadId: null,
+
+  // Daily
+  dailyStreak: 0,
+  lastDailyDate: null,
+  dailyChallengeBlocks: 0,
+  dailyChallengeTarget: 500,
+
+  // Settings
+  soundOn: true,
+  musicOn: true,
+  vibrationOn: true,
+
+  // Crack animation
+  crackStage: 0,
+
+  // Particles & effects
+  screenShake: 0,
+};
+
+let particles = [];
+let floatingTexts = [];
+let bgStars = null;
+let bgDust = null;
+
+// === Sound System ===
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playSound(type) {
+  if (!state.soundOn || !audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const t = audioCtx.currentTime;
+    switch (type) {
+      case 'tap':
+        osc.frequency.value = 200;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.12, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.08);
+        osc.start(t); osc.stop(t + 0.08);
+        break;
+      case 'crack':
+        osc.frequency.value = 120 + Math.random() * 60;
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.15, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+        osc.start(t); osc.stop(t + 0.1);
+        break;
+      case 'break':
+        osc.frequency.value = 300;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.2, t);
+        osc.frequency.exponentialRampToValueAtTime(80, t + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        osc.start(t); osc.stop(t + 0.3);
+        break;
+      case 'crit':
+        osc.frequency.value = 600;
+        osc.type = 'triangle';
+        gain.gain.setValueAtTime(0.2, t);
+        osc.frequency.exponentialRampToValueAtTime(1200, t + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+        osc.start(t); osc.stop(t + 0.25);
+        break;
+      case 'craft':
+        osc.frequency.value = 440;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.15, t);
+        osc.frequency.setValueAtTime(554, t + 0.1);
+        osc.frequency.setValueAtTime(659, t + 0.2);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+        osc.start(t); osc.stop(t + 0.4);
+        break;
+      case 'bosshit':
+        osc.frequency.value = 150;
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+        osc.start(t); osc.stop(t + 0.15);
+        break;
+      case 'bossdefeat':
+        osc.frequency.value = 440;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.15, t);
+        osc.frequency.setValueAtTime(554, t + 0.15);
+        osc.frequency.setValueAtTime(659, t + 0.3);
+        osc.frequency.setValueAtTime(880, t + 0.45);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.7);
+        osc.start(t); osc.stop(t + 0.7);
+        break;
+      case 'fail':
+        osc.frequency.value = 330;
+        osc.type = 'sawtooth';
+        gain.gain.setValueAtTime(0.15, t);
+        osc.frequency.exponentialRampToValueAtTime(110, t + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+        osc.start(t); osc.stop(t + 0.4);
+        break;
+      case 'click':
+        osc.frequency.value = 600;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.08, t);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.04);
+        osc.start(t); osc.stop(t + 0.04);
+        break;
+      case 'collect':
+        osc.frequency.value = 523;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.12, t);
+        osc.frequency.exponentialRampToValueAtTime(784, t + 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+        osc.start(t); osc.stop(t + 0.2);
+        break;
+    }
+  } catch (e) {}
+}
+
+function vibrate(ms) {
+  if (state.vibrationOn && navigator.vibrate) navigator.vibrate(ms);
+}
+
+// === Save/Load ===
+function saveGame() {
+  const d = {
+    resources: state.resources,
+    pickaxe: state.pickaxe,
+    biome: state.biome,
+    blocksMined: state.blocksMined,
+    totalBlocksMined: state.totalBlocksMined,
+    energy: state.energy,
+    maxEnergy: state.maxEnergy,
+    lastEnergyTime: state.lastEnergyTime,
+    buildings: state.buildings,
+    workers: state.workers,
+    maxWorkers: state.maxWorkers,
+    lastOfflineTime: Date.now(),
+    bossDefeated: state.bossDefeated,
+    biomesUnlocked: state.biomesUnlocked,
+    enchEfficiency: state.enchEfficiency,
+    enchFortune: state.enchFortune,
+    enchSilkTouch: state.enchSilkTouch,
+    speedBoostEnd: state.speedBoostEnd,
+    autoTapEnd: state.autoTapEnd,
+    skins: state.skins,
+    activeSkin: state.activeSkin,
+    endPassUsed: state.endPassUsed,
+    referrals: state.referrals,
+    weeklyScore: state.weeklyScore,
+    squadId: state.squadId,
+    dailyStreak: state.dailyStreak,
+    lastDailyDate: state.lastDailyDate,
+    soundOn: state.soundOn,
+    musicOn: state.musicOn,
+    vibrationOn: state.vibrationOn,
+  };
+  localStorage.setItem('mineworld_save', JSON.stringify(d));
+}
+
+function loadGame() {
+  try {
+    const d = JSON.parse(localStorage.getItem('mineworld_save'));
+    if (d) Object.assign(state, d);
+  } catch (e) {}
+}
+
+// === Utility ===
+function getTapDamage() {
+  let dmg = PICKAXES[state.pickaxe].damage;
+  // Efficiency enchantment: +20% per level
+  dmg *= (1 + state.enchEfficiency * 0.2);
+  // Beacon bonus: +10% per level
+  const beaconLvl = state.buildings.beacon || 0;
+  dmg *= (1 + beaconLvl * 0.1);
+  // Speed boost
+  if (Date.now() < state.speedBoostEnd) dmg *= 2;
+  // Boss weaken effect
+  if (state.bossEffect === 'weaken') dmg *= 0.5;
+  return Math.max(1, Math.floor(dmg));
+}
+
+function getCritChance() {
+  const enchLvl = state.buildings.enchantTable || 0;
+  return Math.min(0.5, 0.05 + enchLvl * 0.05);
+}
+
+function getDropMultiplier() {
+  let mult = 1;
+  mult += state.enchFortune * 0.25;
+  const beaconLvl = state.buildings.beacon || 0;
+  mult *= (1 + beaconLvl * 0.1);
+  return mult;
+}
+
+function getWorkerDamage() {
+  const baseDmg = getTapDamage() * 0.1;
+  const houseLvl = state.buildings.house || 0;
+  return Math.max(1, Math.floor(baseDmg * (1 + houseLvl * 0.1)));
+}
+
+function getBuildingCost(key, level) {
+  const b = BUILDINGS[key];
+  const cost = {};
+  for (const [res, amt] of Object.entries(b.baseCost)) {
+    cost[res] = Math.ceil(amt * Math.pow(b.costMult, level));
+  }
+  return cost;
+}
+
+function canAfford(cost) {
+  for (const [res, amt] of Object.entries(cost)) {
+    if (state.resources[res] < amt) return false;
+  }
+  return true;
+}
+
+function payCost(cost) {
+  for (const [res, amt] of Object.entries(cost)) {
+    state.resources[res] -= amt;
+  }
+}
+
+function costString(cost) {
+  return Object.entries(cost).map(([r, a]) => `${a} ${RES_NAMES[r]}`).join(', ');
+}
+
+function isBiomeUnlocked(idx) {
+  if (idx === 0) return true;
+  const req = BIOMES[idx].unlock;
+  if (!req) return true;
+  if (req.pickaxe && state.pickaxe < req.pickaxe) return false;
+  if (req.building && !(state.buildings[req.building] >= 1)) return false;
+  if (idx === 4 && state.endPassUsed) return true;
+  return true;
+}
+
+// === Block Spawning ===
+function spawnBlock() {
+  const biome = BIOMES[state.biome];
+  const totalWeight = biome.blocks.reduce((s, b) => s + b.weight, 0);
+  let r = Math.random() * totalWeight;
+  let block = biome.blocks[0];
+  for (const b of biome.blocks) {
+    r -= b.weight;
+    if (r <= 0) { block = b; break; }
+  }
+  state.blockType = block.res;
+  state.blockMaxHP = block.hp;
+  state.blockHP = block.hp;
+  state.crackStage = 0;
+}
+
+// === Tap Mining ===
+function tapMine(x, y) {
+  if (state.screen !== 'playing' || state.isBoss) return;
+  if (state.energy <= 0) return;
+
+  initAudio();
+  state.energy--;
+  state.lastEnergyTime = Date.now();
+
+  let dmg = getTapDamage();
+  let isCrit = Math.random() < getCritChance();
+  if (isCrit) dmg *= 2;
+
+  state.blockHP -= dmg;
+  state.crackStage = Math.min(4, Math.floor((1 - state.blockHP / state.blockMaxHP) * 5));
+
+  // Effects
+  const bx = BLOCK_X() + BLOCK_SIZE / 2;
+  const by = BLOCK_Y() + BLOCK_SIZE / 2;
+
+  spawnParticles(bx + (Math.random() - 0.5) * BLOCK_SIZE * 0.6, by + (Math.random() - 0.5) * BLOCK_SIZE * 0.6, RES_COLORS[state.blockType], isCrit ? 12 : 6);
+  addFloatingText(bx + (Math.random() - 0.5) * 40, by - 20, isCrit ? `-${dmg} CRIT!` : `-${dmg}`, isCrit ? '#ffdd00' : '#fff', isCrit);
+  state.screenShake = isCrit ? 8 : 3;
+
+  playSound(isCrit ? 'crit' : 'tap');
+  vibrate(isCrit ? 40 : 15);
+
+  if (state.blockHP <= 0) {
+    breakBlock();
+  }
+}
+
+function breakBlock() {
+  const biome = BIOMES[state.biome];
+  const blockDef = biome.blocks.find(b => b.res === state.blockType);
+  const drops = Math.max(1, Math.floor((blockDef?.drops || 1) * getDropMultiplier()));
+
+  state.resources[state.blockType] += drops;
+  state.blocksMined++;
+  state.totalBlocksMined++;
+  state.weeklyScore += state.blockMaxHP;
+  state.dailyChallengeBlocks++;
+
+  const bx = BLOCK_X() + BLOCK_SIZE / 2;
+  const by = BLOCK_Y() + BLOCK_SIZE / 2;
+
+  // Break particles
+  spawnParticles(bx, by, RES_COLORS[state.blockType], 20);
+  addFloatingText(bx, by - 40, `+${drops} ${RES_NAMES[state.blockType]}`, RES_COLORS[state.blockType], true);
+
+  playSound('break');
+  vibrate(30);
+  state.screenShake = 6;
+
+  // Check boss trigger (every 50 blocks)
+  if (state.blocksMined >= 50 && !state.bossDefeated[state.biome]) {
+    triggerBoss();
+    return;
+  }
+
+  spawnBlock();
+}
+
+// === Boss Fight ===
+function triggerBoss() {
+  const boss = BIOMES[state.biome].boss;
+  document.getElementById('bossEmoji').textContent = boss.emoji;
+  document.getElementById('bossIntroName').textContent = boss.name;
+  document.getElementById('bossIntroDesc').textContent = boss.desc;
+  hideAllOverlays();
+  document.getElementById('bossIntro').classList.remove('hidden');
+}
+
+function startBossFight() {
+  hideAllOverlays();
+  const boss = BIOMES[state.biome].boss;
+  state.isBoss = true;
+  state.bossHP = boss.hp;
+  state.bossMaxHP = boss.hp;
+  state.bossTimer = boss.time;
+  state.bossTimerMax = boss.time;
+  state.bossAttackTimer = 8;
+  state.bossEffect = null;
+  state.bossEffectTimer = 0;
+  state.screen = 'playing';
+}
+
+function tapBoss(x, y) {
+  if (!state.isBoss || state.bossHP <= 0) return;
+  if (state.energy < 2) return;
+
+  // Void mechanic — un-tappable zones
+  if (state.bossEffect === 'void') {
+    const bx = BLOCK_X() + BLOCK_SIZE / 2;
+    const by = BLOCK_Y() + BLOCK_SIZE / 2;
+    const dist = Math.hypot(x - bx, y - by);
+    if (dist > BLOCK_SIZE * 0.6) return;
+  }
+
+  initAudio();
+  state.energy -= 2;
+  state.lastEnergyTime = Date.now();
+
+  let dmg = getTapDamage();
+  let isCrit = Math.random() < getCritChance();
+  if (isCrit) dmg *= 2;
+
+  state.bossHP -= dmg;
+
+  const bx = BLOCK_X() + BLOCK_SIZE / 2;
+  const by = BLOCK_Y() + BLOCK_SIZE / 2;
+  spawnParticles(bx + (Math.random() - 0.5) * 60, by + (Math.random() - 0.5) * 60, BIOMES[state.biome].boss.color, 8);
+  addFloatingText(bx + (Math.random() - 0.5) * 40, by - 30, `-${dmg}`, isCrit ? '#ffdd00' : '#ff4444', isCrit);
+  state.screenShake = isCrit ? 10 : 4;
+
+  playSound('bosshit');
+  vibrate(20);
+
+  if (state.bossHP <= 0) {
+    defeatBoss();
+  }
+}
+
+function bossAttack() {
+  const boss = BIOMES[state.biome].boss;
+  switch (boss.mechanic) {
+    case 'weaken':
+      state.bossEffect = 'weaken';
+      state.bossEffectTimer = 5;
+      addFloatingText(W / 2, H * 0.5, 'WEAKENED!', '#ff4444', true);
+      break;
+    case 'slow':
+      state.bossEffect = 'slow';
+      state.bossEffectTimer = 8;
+      addFloatingText(W / 2, H * 0.5, 'SLOWED!', '#4488ff', true);
+      break;
+    case 'darkness':
+      state.bossEffect = 'darkness';
+      state.bossEffectTimer = 6;
+      addFloatingText(W / 2, H * 0.5, 'DARKNESS!', '#6633aa', true);
+      break;
+    case 'wither':
+      state.bossEffect = 'wither';
+      state.bossEffectTimer = 5;
+      addFloatingText(W / 2, H * 0.5, 'WITHERING!', '#333', true);
+      break;
+    case 'void':
+      state.bossEffect = 'void';
+      state.bossEffectTimer = 5;
+      addFloatingText(W / 2, H * 0.5, 'VOID ZONES!', '#8844cc', true);
+      break;
+  }
+  state.screenShake = 12;
+  vibrate(60);
+}
+
+function defeatBoss() {
+  state.isBoss = false;
+  state.bossDefeated[state.biome] = true;
+  state.bossEffect = null;
+
+  // Unlock next biome
+  if (state.biome < 4) {
+    state.biomesUnlocked[state.biome + 1] = true;
+  }
+
+  // Rewards
+  const rewards = { [RES.diamond]: 5 + state.biome * 3, [RES.gold]: 20 + state.biome * 10 };
+  for (const [r, a] of Object.entries(rewards)) {
+    state.resources[r] += a;
+  }
+
+  playSound('bossdefeat');
+  state.screenShake = 15;
+  spawnParticles(W / 2, H / 2, '#ffd700', 40);
+
+  document.getElementById('bossResultEmoji').textContent = '🏆';
+  document.getElementById('bossResultTitle').textContent = 'BOSS DEFEATED!';
+  document.getElementById('bossResultDesc').textContent = `${BIOMES[state.biome].boss.name} defeated! +${rewards[RES.diamond]} Diamond, +${rewards[RES.gold]} Gold`;
+  hideAllOverlays();
+  document.getElementById('bossResult').classList.remove('hidden');
+
+  saveGame();
+}
+
+function failBoss() {
+  state.isBoss = false;
+  state.bossEffect = null;
+  state.blocksMined = 0;
+
+  playSound('fail');
+
+  document.getElementById('bossResultEmoji').textContent = '💀';
+  document.getElementById('bossResultTitle').textContent = 'BOSS ESCAPED';
+  document.getElementById('bossResultDesc').textContent = 'Time ran out! Mine 50 more blocks to try again.';
+  hideAllOverlays();
+  document.getElementById('bossResult').classList.remove('hidden');
+}
+
+function closeBossResult() {
+  hideAllOverlays();
+  state.screen = 'playing';
+  spawnBlock();
+}
+
+// === Particles ===
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 5;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 1,
+      decay: 0.015 + Math.random() * 0.025,
+      size: 2 + Math.random() * 4,
+      color: Math.random() > 0.7 ? '#fff' : color,
+      isSquare: Math.random() > 0.5,
+    });
+  }
+}
+
+function addFloatingText(x, y, text, color, big) {
+  floatingTexts.push({ x, y, text, color, life: 1, vy: -1.5, big: !!big });
+}
+
+// === Screen Management ===
+function hideAllOverlays() {
+  document.querySelectorAll('.overlay').forEach(o => o.classList.add('hidden'));
+}
+
+function showTitle() {
+  hideAllOverlays();
+  document.getElementById('titleScreen').classList.remove('hidden');
+  state.screen = 'title';
+  checkDailyReward();
+  saveGame();
+}
+
+function returnFromOverlay() {
+  if (state.screen === 'playing') {
+    hideAllOverlays();
+  } else {
+    showTitle();
+  }
+}
+
+function showBiomeMap() {
+  hideAllOverlays();
+  document.getElementById('biomeMap').classList.remove('hidden');
+  state.screen = 'biomeMap';
+
+  const list = document.getElementById('biomeList');
+  list.innerHTML = '';
+  BIOMES.forEach((b, i) => {
+    const unlocked = isBiomeUnlocked(i);
+    state.biomesUnlocked[i] = unlocked;
+    const node = document.createElement('div');
+    node.className = 'biome-node' + (unlocked ? ' active' : ' locked');
+    node.innerHTML = `
+      <div class="biome-icon">${b.icon}</div>
+      <div class="biome-info">
+        <div class="biome-name">${b.name}</div>
+        <div class="biome-desc">${b.desc}</div>
+        ${!unlocked ? `<div class="biome-lock">Requires: ${b.unlock.label}</div>` : ''}
+        ${state.bossDefeated[i] ? '<div style="color:var(--gold);font-size:10px">Boss Defeated</div>' : ''}
+      </div>`;
+    if (unlocked) {
+      node.onclick = () => {
+        state.biome = i;
+        state.blocksMined = 0;
+        startMining();
+      };
+    }
+    list.appendChild(node);
+  });
+}
+
+function startMining() {
+  hideAllOverlays();
+  state.screen = 'playing';
+  spawnBlock();
+  playSound('click');
+}
+
+function showCrafting() {
+  hideAllOverlays();
+  document.getElementById('craftScreen').classList.remove('hidden');
+
+  const grid = document.getElementById('craftGrid');
+  grid.innerHTML = '';
+  PICKAXES.forEach((p, i) => {
+    if (i === 0) return;
+    const owned = state.pickaxe >= i;
+    const affordable = p.recipe && canAfford(p.recipe);
+    const prevOwned = state.pickaxe >= i - 1;
+    const item = document.createElement('div');
+    item.className = 'craft-item' + (owned ? ' owned' : affordable && prevOwned ? ' available' : ' locked');
+    item.innerHTML = `
+      <div class="craft-icon">${p.icon}</div>
+      <div class="craft-info">
+        <div class="craft-name">${p.name} ${owned ? '(Owned)' : ''}</div>
+        <div class="craft-cost">${p.recipe ? costString(p.recipe) : ''}</div>
+        <div class="craft-stat">Damage: ${p.damage}</div>
+      </div>
+      ${!owned && affordable && prevOwned ? '<button class="craft-btn">CRAFT</button>' : ''}`;
+    if (!owned && affordable && prevOwned) {
+      item.querySelector('.craft-btn').onclick = (e) => {
+        e.stopPropagation();
+        payCost(p.recipe);
+        state.pickaxe = i;
+        playSound('craft');
+        saveGame();
+        showCrafting();
+      };
+    }
+    grid.appendChild(item);
+  });
+}
+
+function showBuilding() {
+  hideAllOverlays();
+  document.getElementById('buildScreen').classList.remove('hidden');
+
+  const grid = document.getElementById('buildGrid');
+  grid.innerHTML = '';
+  for (const [key, b] of Object.entries(BUILDINGS)) {
+    const level = state.buildings[key] || 0;
+    const maxed = level >= b.maxLevel;
+    const cost = maxed ? null : getBuildingCost(key, level);
+    const affordable = cost && canAfford(cost);
+    const card = document.createElement('div');
+    card.className = 'build-card' + (maxed ? ' maxed' : affordable ? ' available' : '');
+    card.innerHTML = `
+      <div class="build-icon">${b.icon}</div>
+      <div class="build-name">${b.name}</div>
+      <div class="build-level">${maxed ? 'MAX' : `Lv ${level}`}</div>
+      <div class="build-bonus">${b.bonus}</div>
+      ${cost ? `<div class="build-cost">${costString(cost)}</div>` : ''}`;
+    if (affordable && !maxed) {
+      card.onclick = () => {
+        payCost(cost);
+        state.buildings[key] = level + 1;
+        // Update derived stats
+        state.maxWorkers = 1 + (state.buildings.mineShaft || 0);
+        state.maxEnergy = 100 + (state.buildings.farm || 0) * 5;
+        playSound('craft');
+        saveGame();
+        showBuilding();
+      };
+    }
+    grid.appendChild(card);
+  }
+}
+
+function showShop() {
+  hideAllOverlays();
+  document.getElementById('shopScreen').classList.remove('hidden');
+
+  const tabs = ['Energy', 'Enchant', 'Workers', 'Boosts', 'Resources'];
+  const tabsEl = document.getElementById('shopTabs');
+  tabsEl.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'shop-tab' + (i === 0 ? ' active' : '');
+    btn.textContent = t;
+    btn.onclick = () => {
+      tabsEl.querySelectorAll('.shop-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderShopTab(i);
+    };
+    tabsEl.appendChild(btn);
+  });
+  renderShopTab(0);
+}
+
+function renderShopTab(tab) {
+  const items = document.getElementById('shopItems');
+  items.innerHTML = '';
+
+  const catalog = [
+    // Tab 0: Energy
+    [
+      { id: 'energy_refill', icon: '⚡', name: 'Energy Refill', desc: 'Fully recharge energy', stars: 25 },
+      { id: 'energy_tank', icon: '🔋', name: 'Energy Tank +50', desc: 'Permanent +50 max energy', stars: 100 },
+    ],
+    // Tab 1: Enchantments
+    [
+      { id: 'efficiency_1', icon: '⚔️', name: 'Efficiency I', desc: '+20% tap damage', stars: 75 },
+      { id: 'efficiency_2', icon: '⚔️', name: 'Efficiency II', desc: '+40% tap damage', stars: 125 },
+      { id: 'efficiency_3', icon: '⚔️', name: 'Efficiency III', desc: '+60% tap damage', stars: 175 },
+      { id: 'fortune_1', icon: '🍀', name: 'Fortune I', desc: '+25% drops', stars: 100 },
+      { id: 'fortune_2', icon: '🍀', name: 'Fortune II', desc: '+50% drops', stars: 175 },
+      { id: 'fortune_3', icon: '🍀', name: 'Fortune III', desc: '+75% drops', stars: 250 },
+      { id: 'silk_touch', icon: '🧤', name: 'Silk Touch', desc: 'Rare block drops', stars: 200 },
+    ],
+    // Tab 2: Workers
+    [
+      { id: 'worker_1', icon: '👷', name: '+1 Worker', desc: 'Auto-mine while away', stars: 50 },
+      { id: 'worker_5', icon: '👷', name: '+5 Workers', desc: '20% discount bundle!', stars: 200 },
+    ],
+    // Tab 3: Boosts
+    [
+      { id: 'speed_boost', icon: '🚀', name: '2x Mining Speed', desc: '1 hour duration', stars: 30 },
+      { id: 'auto_tap', icon: '🤖', name: 'Auto-Tap', desc: '30 min auto mining', stars: 40 },
+      { id: 'end_pass', icon: '🌌', name: 'End Dimension Pass', desc: 'Skip prerequisites', stars: 500 },
+    ],
+    // Tab 4: Resources
+    [
+      { id: 'resource_pack_1', icon: '📦', name: 'Starter Pack', desc: '500 stone + 200 iron + 50 gold', stars: 75 },
+      { id: 'resource_pack_2', icon: '📦', name: 'Advanced Pack', desc: '100 diamond + 500 iron + 200 gold', stars: 200 },
+      { id: 'resource_pack_3', icon: '📦', name: 'Ultimate Pack', desc: '50 netherite + 200 diamond + 500 gold', stars: 400 },
+    ],
+  ];
+
+  (catalog[tab] || []).forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'shop-item';
+    el.innerHTML = `
+      <div class="shop-icon">${item.icon}</div>
+      <div class="shop-info">
+        <div class="shop-name">${item.name}</div>
+        <div class="shop-desc">${item.desc}</div>
+      </div>
+      <button class="shop-buy">${item.stars} Stars</button>`;
+    el.querySelector('.shop-buy').onclick = () => purchaseItem(item.id);
+    items.appendChild(el);
+  });
+}
+
+function showLeaderboard() {
+  hideAllOverlays();
+  document.getElementById('leaderboardScreen').classList.remove('hidden');
+  submitScore();
+  loadLeaderboard('weekly');
+}
+
+async function submitScore() {
+  try {
+    await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'score',
+        userId: tgUserId,
+        name: tgUser?.first_name || 'Miner',
+        score: state.weeklyScore,
+        blocksMined: state.totalBlocksMined,
+        biome: BIOMES[state.biome].name,
+      }),
+    });
+  } catch (e) {}
+}
+
+async function loadLeaderboard(type, btn) {
+  if (btn) {
+    document.querySelectorAll('.lb-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  const list = document.getElementById('lbList');
+  list.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">Loading...</div>';
+  try {
+    const resp = await fetch(`/api/leaderboard?type=${type}`);
+    const data = await resp.json();
+    list.innerHTML = '';
+    if (!data.entries || data.entries.length === 0) {
+      list.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">No entries yet</div>';
+      return;
+    }
+    data.entries.forEach((e, i) => {
+      const el = document.createElement('div');
+      el.className = 'lb-entry';
+      const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+      el.innerHTML = `
+        <div class="lb-rank">${medal}</div>
+        <div class="lb-name">${e.name || e.id || 'Miner'}</div>
+        <div class="lb-score">${(e.score || 0).toLocaleString()}</div>`;
+      list.appendChild(el);
+    });
+  } catch (e) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text2);padding:20px">Offline</div>';
+  }
+}
+
+function showSettings() {
+  hideAllOverlays();
+  document.getElementById('settingsScreen').classList.remove('hidden');
+  updateSettingsUI();
+}
+
+function updateSettingsUI() {
+  document.getElementById('toggleSound').className = 'setting-toggle' + (state.soundOn ? ' on' : '');
+  document.getElementById('toggleMusic').className = 'setting-toggle' + (state.musicOn ? ' on' : '');
+  document.getElementById('toggleVibration').className = 'setting-toggle' + (state.vibrationOn ? ' on' : '');
+}
+
+function toggleSetting(key) {
+  if (key === 'sound') state.soundOn = !state.soundOn;
+  if (key === 'music') state.musicOn = !state.musicOn;
+  if (key === 'vibration') state.vibrationOn = !state.vibrationOn;
+  updateSettingsUI();
+  playSound('click');
+  saveGame();
+}
+
+// === Daily Reward ===
+function checkDailyReward() {
+  const today = new Date().toDateString();
+  const banner = document.getElementById('dailyBanner');
+  if (state.lastDailyDate === today) {
+    banner.classList.add('hidden');
+  } else {
+    banner.classList.remove('hidden');
+  }
+}
+
+function showDailyReward() {
+  hideAllOverlays();
+  document.getElementById('dailyScreen').classList.remove('hidden');
+
+  const today = new Date().toDateString();
+  const canClaim = state.lastDailyDate !== today;
+  const days = document.getElementById('dailyDays');
+  days.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const d = document.createElement('div');
+    const isClaimed = i < state.dailyStreak && !canClaim;
+    const isToday = i === state.dailyStreak % 7 && canClaim;
+    d.className = 'daily-day' + (isClaimed ? ' claimed' : '') + (isToday ? ' today' : '');
+    d.innerHTML = `<div class="daily-day-num">Day ${i + 1}</div><div class="daily-day-reward">🎁</div>`;
+    days.appendChild(d);
+  }
+  document.getElementById('dailyClaimBtn').style.display = canClaim ? 'block' : 'none';
+}
+
+function claimDaily() {
+  const today = new Date().toDateString();
+  if (state.lastDailyDate === today) return;
+
+  const rewardIdx = state.dailyStreak % 7;
+  const reward = DAILY_REWARDS[rewardIdx];
+  for (const [r, a] of Object.entries(reward)) {
+    state.resources[r] += a;
+  }
+  state.dailyStreak++;
+  state.lastDailyDate = today;
+
+  playSound('collect');
+  saveGame();
+  showTitle();
+}
+
+// === Offline Rewards ===
+function checkOfflineRewards() {
+  if (state.workers <= 0) return;
+  const now = Date.now();
+  const elapsed = Math.min((now - state.lastOfflineTime) / 1000, 8 * 3600);
+  if (elapsed < 60) return;
+
+  const dmgPerSec = getWorkerDamage() * state.workers * 0.5;
+  const biome = BIOMES[state.biome];
+  const avgHP = biome.blocks.reduce((s, b) => s + b.hp * b.weight, 0) / biome.blocks.reduce((s, b) => s + b.weight, 0);
+  const blocksMinedOffline = Math.floor(dmgPerSec * elapsed / avgHP);
+
+  if (blocksMinedOffline <= 0) return;
+
+  const offlineResources = {};
+  for (let i = 0; i < blocksMinedOffline; i++) {
+    const totalWeight = biome.blocks.reduce((s, b) => s + b.weight, 0);
+    let r = Math.random() * totalWeight;
+    for (const b of biome.blocks) {
+      r -= b.weight;
+      if (r <= 0) {
+        offlineResources[b.res] = (offlineResources[b.res] || 0) + b.drops;
+        break;
+      }
+    }
+  }
+
+  const timeStr = elapsed >= 3600 ? `${Math.floor(elapsed / 3600)}h ${Math.floor((elapsed % 3600) / 60)}m` : `${Math.floor(elapsed / 60)}m`;
+
+  document.getElementById('offlineTime').textContent = `Your ${state.workers} worker(s) mined for ${timeStr}`;
+  const rewardsList = document.getElementById('offlineRewards');
+  rewardsList.innerHTML = '';
+  for (const [r, a] of Object.entries(offlineResources)) {
+    const el = document.createElement('div');
+    el.className = 'offline-row';
+    el.textContent = `+${a} ${RES_NAMES[r]}`;
+    rewardsList.appendChild(el);
+  }
+
+  window._offlineResources = offlineResources;
+  hideAllOverlays();
+  document.getElementById('offlineScreen').classList.remove('hidden');
+}
+
+function collectOffline() {
+  if (window._offlineResources) {
+    for (const [r, a] of Object.entries(window._offlineResources)) {
+      state.resources[r] += a;
+    }
+    window._offlineResources = null;
+  }
+  playSound('collect');
+  saveGame();
+  showTitle();
+}
+
+// === Purchase ===
+async function purchaseItem(itemId) {
+  if (!tg) { alert('Telegram Stars payments require the Telegram app.'); return; }
+  try {
+    const resp = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ itemId, initData: tg.initData, userId: tgUserId }),
+    });
+    const data = await resp.json();
+    if (data.invoiceUrl) {
+      tg.openInvoice(data.invoiceUrl, (status) => {
+        if (status === 'paid') applyPurchase(itemId);
+      });
+    }
+  } catch (e) { console.error('Purchase error:', e); }
+}
+
+function applyPurchase(itemId) {
+  switch (itemId) {
+    case 'energy_refill': state.energy = state.maxEnergy; break;
+    case 'energy_tank': state.maxEnergy += 50; state.energy = state.maxEnergy; break;
+    case 'efficiency_1': state.enchEfficiency = Math.max(state.enchEfficiency, 1); break;
+    case 'efficiency_2': state.enchEfficiency = Math.max(state.enchEfficiency, 2); break;
+    case 'efficiency_3': state.enchEfficiency = Math.max(state.enchEfficiency, 3); break;
+    case 'efficiency_4': state.enchEfficiency = Math.max(state.enchEfficiency, 4); break;
+    case 'efficiency_5': state.enchEfficiency = Math.max(state.enchEfficiency, 5); break;
+    case 'fortune_1': state.enchFortune = Math.max(state.enchFortune, 1); break;
+    case 'fortune_2': state.enchFortune = Math.max(state.enchFortune, 2); break;
+    case 'fortune_3': state.enchFortune = Math.max(state.enchFortune, 3); break;
+    case 'silk_touch': state.enchSilkTouch = true; break;
+    case 'worker_1': state.workers++; break;
+    case 'worker_5': state.workers += 5; break;
+    case 'speed_boost': state.speedBoostEnd = Date.now() + 3600000; break;
+    case 'auto_tap': state.autoTapEnd = Date.now() + 1800000; break;
+    case 'end_pass': state.endPassUsed = true; state.biomesUnlocked[4] = true; break;
+    case 'resource_pack_1': state.resources[RES.stone] += 500; state.resources[RES.iron] += 200; state.resources[RES.gold] += 50; break;
+    case 'resource_pack_2': state.resources[RES.diamond] += 100; state.resources[RES.iron] += 500; state.resources[RES.gold] += 200; break;
+    case 'resource_pack_3': state.resources[RES.netherite] += 50; state.resources[RES.diamond] += 200; state.resources[RES.gold] += 500; break;
+    case 'skin_creeper': state.skins.push('creeper'); break;
+    case 'skin_ender': state.skins.push('ender'); break;
+  }
+  playSound('collect');
+  saveGame();
+}
+
+// === Referral ===
+async function handleReferral(referrerId) {
+  if (state.pickaxe >= 3) return; // Already has iron pickaxe
+  state.pickaxe = Math.max(state.pickaxe, 3);
+  state.resources[RES.stone] += 1000;
+  saveGame();
+  try {
+    await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'referral', referrerId, userId: tgUserId }),
+    });
+  } catch (e) {}
+}
+
+// === Block Pixel Art Drawing ===
+function drawPixelBlock(x, y, size, resType, crackStage) {
+  const colors = getBlockColors(resType);
+  const px = size / 8;
+
+  // Draw 8x8 pixel grid
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const colorIdx = getBlockPixel(resType, row, col);
+      ctx.fillStyle = colors[colorIdx];
+      ctx.fillRect(x + col * px, y + row * px, px + 0.5, px + 0.5);
+    }
+  }
+
+  // Block border
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, size, size);
+
+  // Highlight top/left
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y + size);
+  ctx.lineTo(x, y);
+  ctx.lineTo(x + size, y);
+  ctx.stroke();
+
+  // Crack overlay
+  if (crackStage > 0) drawCracks(x, y, size, crackStage);
+}
+
+function getBlockColors(resType) {
+  const palettes = {
+    [RES.dirt]:      ['#8B6914','#7a5c10','#9a7620','#6b4e0c'],
+    [RES.stone]:     ['#888','#777','#999','#666'],
+    [RES.coal]:      ['#333','#222','#444','#1a1a1a'],
+    [RES.iron]:      ['#c87533','#b86828','#d88844','#a05a20'],
+    [RES.gold]:      ['#ffd700','#e8c200','#ffee44','#ccaa00'],
+    [RES.redstone]:  ['#cc0000','#aa0000','#ee2222','#880000'],
+    [RES.lapis]:     ['#2255cc','#1a44aa','#3366dd','#113388'],
+    [RES.diamond]:   ['#00ccff','#00aadd','#44ddff','#0088aa'],
+    [RES.emerald]:   ['#00cc55','#00aa44','#22dd66','#008833'],
+    [RES.deepslate]: ['#444','#333','#555','#2a2a2a'],
+    [RES.netherrack]:['#882222','#771a1a','#993333','#661111'],
+    [RES.netherite]: ['#3a2a2a','#2d1f1f','#4a3535','#221818'],
+    [RES.quartz]:    ['#ddd','#ccc','#eee','#bbb'],
+    [RES.glowstone]: ['#ffee88','#eecc44','#ffff99','#ddbb33'],
+    [RES.endstone]:  ['#e8dfc0','#d8cfb0','#f0e8cc','#c8bfa0'],
+    [RES.enderpearl]:['#8844cc','#7733aa','#9955dd','#662299'],
+    [RES.dragonegg]: ['#1a0033','#110022','#2a0044','#0a0018'],
+  };
+  return palettes[resType] || palettes[RES.stone];
+}
+
+function getBlockPixel(resType, row, col) {
+  // Default stone-like texture
+  const patterns = {
+    [RES.dirt]: [
+      [0,0,1,0,0,1,0,0],
+      [0,1,0,0,1,0,0,1],
+      [1,0,0,1,0,0,1,0],
+      [0,0,2,0,0,1,0,0],
+      [0,1,0,0,1,0,0,1],
+      [1,0,0,3,0,0,1,0],
+      [0,0,1,0,0,1,0,0],
+      [0,1,0,0,1,0,0,1],
+    ],
+    [RES.stone]: [
+      [0,0,1,1,0,0,1,0],
+      [0,1,1,0,0,1,0,0],
+      [1,0,0,0,2,0,0,1],
+      [0,0,2,1,0,0,1,0],
+      [0,1,0,0,0,1,0,0],
+      [1,0,0,1,2,0,0,1],
+      [0,0,1,0,0,0,1,0],
+      [0,1,0,0,1,1,0,0],
+    ],
+    [RES.coal]: [
+      [1,1,0,0,1,1,0,0],
+      [1,0,0,3,0,0,0,1],
+      [0,0,3,3,0,0,3,0],
+      [0,3,3,0,0,3,3,0],
+      [1,0,0,0,3,3,0,1],
+      [0,0,3,0,0,0,0,0],
+      [0,3,0,0,0,3,3,0],
+      [1,0,0,3,3,0,0,1],
+    ],
+    [RES.iron]: [
+      [0,0,1,0,0,1,0,0],
+      [0,2,2,0,1,0,2,0],
+      [1,2,2,1,0,0,2,1],
+      [0,0,1,0,0,1,0,0],
+      [0,1,0,0,2,2,0,0],
+      [1,0,0,2,2,2,0,1],
+      [0,0,1,2,2,0,0,0],
+      [0,1,0,0,0,1,0,0],
+    ],
+    [RES.gold]: [
+      [0,0,1,0,0,1,0,0],
+      [0,2,2,0,1,0,0,0],
+      [1,2,2,1,0,2,2,1],
+      [0,0,1,0,0,2,2,0],
+      [0,1,0,2,2,0,0,0],
+      [1,0,0,2,2,0,0,1],
+      [0,2,2,0,0,1,0,0],
+      [0,2,2,0,1,0,0,0],
+    ],
+    [RES.diamond]: [
+      [1,1,0,0,1,1,0,0],
+      [1,0,0,1,0,0,0,1],
+      [0,0,2,2,0,0,1,0],
+      [0,2,2,2,2,0,0,0],
+      [0,0,2,2,0,0,0,1],
+      [1,0,0,0,0,2,2,0],
+      [0,0,1,0,2,2,2,0],
+      [1,1,0,0,0,2,0,1],
+    ],
+  };
+
+  const pattern = patterns[resType];
+  if (pattern) return pattern[row][col];
+  // Generic pattern for blocks without custom texture
+  return ((row + col) % 3 === 0) ? 1 : ((row * col) % 5 === 0) ? 2 : 0;
+}
+
+function drawCracks(x, y, size, stage) {
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.lineWidth = 1.5;
+  const s = size;
+  ctx.beginPath();
+  if (stage >= 1) {
+    ctx.moveTo(x + s * 0.3, y);
+    ctx.lineTo(x + s * 0.45, y + s * 0.35);
+    ctx.lineTo(x + s * 0.35, y + s * 0.5);
+  }
+  if (stage >= 2) {
+    ctx.moveTo(x + s, y + s * 0.4);
+    ctx.lineTo(x + s * 0.65, y + s * 0.5);
+    ctx.lineTo(x + s * 0.55, y + s * 0.7);
+  }
+  if (stage >= 3) {
+    ctx.moveTo(x + s * 0.5, y + s);
+    ctx.lineTo(x + s * 0.4, y + s * 0.7);
+    ctx.lineTo(x + s * 0.25, y + s * 0.6);
+  }
+  if (stage >= 4) {
+    ctx.moveTo(x, y + s * 0.3);
+    ctx.lineTo(x + s * 0.2, y + s * 0.45);
+    ctx.lineTo(x + s * 0.3, y + s * 0.65);
+    ctx.moveTo(x + s * 0.5, y + s * 0.3);
+    ctx.lineTo(x + s * 0.6, y + s * 0.55);
+  }
+  ctx.stroke();
+}
+
+// === Drawing ===
+function drawBackground() {
+  // Dark mine shaft gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0d0d1a');
+  grad.addColorStop(0.4, '#1a1a2e');
+  grad.addColorStop(0.7, '#111122');
+  grad.addColorStop(1, '#0a0a15');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  const t = performance.now() / 1000;
+
+  // Ambient dust particles
+  if (!bgDust) {
+    bgDust = [];
+    for (let i = 0; i < 40; i++) {
+      bgDust.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        size: 0.5 + Math.random() * 1.5,
+        speed: 0.1 + Math.random() * 0.3,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  bgDust.forEach(d => {
+    const alpha = 0.15 + 0.1 * Math.sin(t * d.speed + d.phase);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#886644';
+    ctx.beginPath();
+    ctx.arc(d.x + Math.sin(t * 0.5 + d.phase) * 10, d.y, d.size, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Torch glow (left and right)
+  const torchGlow = ctx.createRadialGradient(30, H * 0.35, 5, 30, H * 0.35, 120);
+  torchGlow.addColorStop(0, 'rgba(255,170,50,0.12)');
+  torchGlow.addColorStop(0.5, 'rgba(255,120,20,0.05)');
+  torchGlow.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.globalAlpha = 0.7 + Math.sin(t * 3) * 0.15;
+  ctx.fillStyle = torchGlow;
+  ctx.fillRect(0, 0, W, H);
+
+  const torchGlow2 = ctx.createRadialGradient(W - 30, H * 0.35, 5, W - 30, H * 0.35, 120);
+  torchGlow2.addColorStop(0, 'rgba(255,170,50,0.12)');
+  torchGlow2.addColorStop(0.5, 'rgba(255,120,20,0.05)');
+  torchGlow2.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.fillStyle = torchGlow2;
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.globalAlpha = 1;
+
+  // Stone wall texture (subtle)
+  if (!bgStars) {
+    bgStars = [];
+    for (let i = 0; i < 20; i++) {
+      bgStars.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        w: 20 + Math.random() * 40,
+        h: 15 + Math.random() * 25,
+      });
+    }
+  }
+  ctx.globalAlpha = 0.04;
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  bgStars.forEach(s => {
+    ctx.strokeRect(s.x, s.y, s.w, s.h);
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  const biome = BIOMES[state.biome];
+  const px = state.pickaxe;
+
+  // Top bar background
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, 0, W, 54);
+
+  // Pickaxe info (left)
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${PICKAXES[px].icon} ${PICKAXES[px].name}`, 10, 18);
+  ctx.fillStyle = var_green();
+  ctx.font = '11px monospace';
+  ctx.fillText(`DMG: ${getTapDamage()}`, 10, 34);
+
+  // Biome (center)
+  ctx.fillStyle = biome.color;
+  ctx.font = 'bold 12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${biome.icon} ${biome.name}`, W / 2, 18);
+
+  // Block counter
+  ctx.fillStyle = '#888';
+  ctx.font = '11px monospace';
+  const bossIn = state.bossDefeated[state.biome] ? 'Boss Done' : `Boss: ${state.blocksMined}/50`;
+  ctx.fillText(bossIn, W / 2, 34);
+
+  // Energy bar (right)
+  const ebW = 80, ebH = 14, ebX = W - ebW - 10, ebY = 10;
+  ctx.fillStyle = '#333';
+  ctx.fillRect(ebX, ebY, ebW, ebH);
+  ctx.fillStyle = state.energy > 20 ? '#5a8f3c' : '#cc3333';
+  ctx.fillRect(ebX, ebY, ebW * (state.energy / state.maxEnergy), ebH);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(ebX, ebY, ebW, ebH);
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${state.energy}/${state.maxEnergy}`, ebX + ebW / 2, ebY + 11);
+
+  // Block HP bar (below block)
+  if (state.blockType >= 0 && !state.isBoss) {
+    const bx = BLOCK_X();
+    const by = BLOCK_Y() + BLOCK_SIZE + 12;
+    const bw = BLOCK_SIZE;
+    const bh = 10;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(bx, by, bw, bh);
+    const hpPct = Math.max(0, state.blockHP / state.blockMaxHP);
+    ctx.fillStyle = hpPct > 0.5 ? '#5a8f3c' : hpPct > 0.2 ? '#cc8800' : '#cc3333';
+    ctx.fillRect(bx, by, bw * hpPct, bh);
+    ctx.strokeStyle = '#555';
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${Math.max(0, state.blockHP)}/${state.blockMaxHP}`, bx + bw / 2, by + 8);
+
+    // Block name
+    ctx.fillStyle = RES_COLORS[state.blockType];
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(RES_NAMES[state.blockType], bx + bw / 2, by + 26);
+  }
+
+  // Boss HUD
+  if (state.isBoss) {
+    const boss = BIOMES[state.biome].boss;
+    const bw = W * 0.8;
+    const bx = (W - bw) / 2;
+    const by = 60;
+
+    ctx.fillStyle = boss.color;
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${boss.emoji} ${boss.name}`, W / 2, by);
+
+    ctx.fillStyle = '#333';
+    ctx.fillRect(bx, by + 6, bw, 14);
+    const hpPct = Math.max(0, state.bossHP / state.bossMaxHP);
+    ctx.fillStyle = '#cc3333';
+    ctx.fillRect(bx, by + 6, bw * hpPct, 14);
+    ctx.strokeStyle = '#555';
+    ctx.strokeRect(bx, by + 6, bw, 14);
+
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px monospace';
+    ctx.fillText(`${Math.max(0, Math.ceil(state.bossHP))} / ${state.bossMaxHP}`, W / 2, by + 17);
+
+    ctx.fillStyle = '#ffd700';
+    ctx.font = '12px monospace';
+    ctx.fillText(`${Math.max(0, Math.ceil(state.bossTimer))}s`, W / 2, by + 36);
+
+    if (state.bossEffect) {
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`${state.bossEffect.toUpperCase()}!`, W / 2, by + 52);
+    }
+  }
+
+  // Resource bar (bottom)
+  ctx.fillStyle = 'rgba(0,0,0,0.6)';
+  ctx.fillRect(0, H - 44, W, 44);
+
+  // Show top 6 resources the player has
+  const owned = state.resources.map((a, i) => [i, a]).filter(([, a]) => a > 0).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const rw = W / Math.max(owned.length, 1);
+  owned.forEach(([res, amt], i) => {
+    ctx.fillStyle = RES_COLORS[res];
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(RES_ICONS[res], rw * i + rw / 2, H - 28);
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px monospace';
+    ctx.fillText(amt >= 1000 ? (amt / 1000).toFixed(1) + 'k' : amt, rw * i + rw / 2, H - 14);
+  });
+
+  // Bottom nav buttons
+  if (!state.isBoss) {
+    const navBtns = ['CRAFT', 'BUILD', 'SHOP'];
+    const btnW = 60;
+    const totalW = navBtns.length * btnW + (navBtns.length - 1) * 8;
+    const startX = (W - totalW) / 2;
+    const btnY = H - 90;
+
+    navBtns.forEach((label, i) => {
+      const bx = startX + i * (btnW + 8);
+      ctx.fillStyle = 'rgba(90,143,60,0.2)';
+      ctx.fillRect(bx, btnY, btnW, 28);
+      ctx.strokeStyle = '#5a8f3c';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx, btnY, btnW, 28);
+      ctx.fillStyle = '#5a8f3c';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, bx + btnW / 2, btnY + 18);
+    });
+  }
+
+  // Workers indicator
+  if (state.workers > 0) {
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(W - 90, 46, 85, 20);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`👷 ${state.workers} workers`, W - 10, 60);
+  }
+}
+
+function var_green() { return '#5a8f3c'; }
+
+function drawBossSprite(x, y, size) {
+  const boss = BIOMES[state.biome].boss;
+  const t = performance.now() / 1000;
+  const bob = Math.sin(t * 2) * 5;
+
+  ctx.font = `${size * 0.7}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(boss.emoji, x + size / 2, y + size / 2 + bob);
+
+  // Glowing aura
+  const glow = ctx.createRadialGradient(x + size / 2, y + size / 2 + bob, size * 0.2, x + size / 2, y + size / 2 + bob, size * 0.8);
+  glow.addColorStop(0, 'rgba(255,0,0,0)');
+  glow.addColorStop(0.7, `rgba(255,0,0,${0.05 + Math.sin(t * 3) * 0.03})`);
+  glow.addColorStop(1, 'rgba(255,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - size * 0.3, y - size * 0.3 + bob, size * 1.6, size * 1.6);
+}
+
+function drawPickaxeSwing() {
+  // Simple pickaxe animation on tap
+  if (pickaxeSwing <= 0) return;
+  const t = pickaxeSwing;
+  const angle = -0.5 + t * 1.2;
+  const px = W * 0.7;
+  const py = H * 0.55;
+
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+
+  // Handle
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(-3, -40, 6, 45);
+
+  // Head
+  ctx.fillStyle = getPickaxeColor();
+  ctx.beginPath();
+  ctx.moveTo(-15, -40);
+  ctx.lineTo(15, -40);
+  ctx.lineTo(20, -35);
+  ctx.lineTo(-20, -35);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function getPickaxeColor() {
+  const colors = ['#8B6914', '#8B4513', '#888', '#c87533', '#ffd700', '#00ccff', '#3a2a2a'];
+  return colors[state.pickaxe] || '#888';
+}
+
+let pickaxeSwing = 0;
+
+function drawDarknessEffect() {
+  if (state.bossEffect !== 'darkness') return;
+  const bx = BLOCK_X() + BLOCK_SIZE / 2;
+  const by = BLOCK_Y() + BLOCK_SIZE / 2;
+  const r = BLOCK_SIZE * 0.8;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.beginPath();
+  ctx.rect(0, 0, W, H);
+  // Cut out circle around block
+  ctx.arc(bx, by, r, 0, Math.PI * 2, true);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    if (p.isSquare) {
+      const s = p.size * p.life;
+      ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+    } else {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawFloatingTexts() {
+  floatingTexts.forEach(ft => {
+    ctx.globalAlpha = ft.life;
+    ctx.fillStyle = ft.color;
+    ctx.font = ft.big ? 'bold 18px monospace' : '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(ft.text, ft.x, ft.y);
+  });
+  ctx.globalAlpha = 1;
+}
+
+// === Input ===
+canvas.addEventListener('pointerdown', (e) => {
+  if (state.screen !== 'playing') return;
+  initAudio();
+
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  // Check bottom nav buttons
+  if (!state.isBoss && y >= H - 90 && y <= H - 62) {
+    const navBtns = ['CRAFT', 'BUILD', 'SHOP'];
+    const btnW = 60;
+    const totalW = navBtns.length * btnW + (navBtns.length - 1) * 8;
+    const startX = (W - totalW) / 2;
+    for (let i = 0; i < navBtns.length; i++) {
+      const bx = startX + i * (btnW + 8);
+      if (x >= bx && x <= bx + btnW) {
+        playSound('click');
+        if (i === 0) showCrafting();
+        else if (i === 1) showBuilding();
+        else showShop();
+        return;
+      }
+    }
+  }
+
+  // Tap mining or boss
+  if (state.isBoss) {
+    tapBoss(x, y);
+  } else {
+    tapMine(x, y);
+  }
+  pickaxeSwing = 1;
+});
+
+// === Auto-Tap ===
+let autoTapInterval = null;
+function checkAutoTap() {
+  if (Date.now() < state.autoTapEnd && state.screen === 'playing') {
+    if (!autoTapInterval) {
+      autoTapInterval = setInterval(() => {
+        if (state.screen !== 'playing' || Date.now() >= state.autoTapEnd) {
+          clearInterval(autoTapInterval);
+          autoTapInterval = null;
+          return;
+        }
+        if (state.isBoss) {
+          tapBoss(BLOCK_X() + BLOCK_SIZE / 2, BLOCK_Y() + BLOCK_SIZE / 2);
+        } else {
+          tapMine(BLOCK_X() + BLOCK_SIZE / 2, BLOCK_Y() + BLOCK_SIZE / 2);
+        }
+      }, 200);
+    }
+  }
+}
+
+// === Game Loop ===
+let lastFrameTime = performance.now();
+
+function gameLoop(now) {
+  requestAnimationFrame(gameLoop);
+  const dt = Math.min((now - lastFrameTime) / 1000, 0.1);
+  lastFrameTime = now;
+
+  // Energy regeneration
+  if (state.screen === 'playing') {
+    const regenRate = state.bossEffect === 'slow' ? 0.33 : 1;
+    const energyElapsed = (Date.now() - state.lastEnergyTime) / 1000;
+    if (energyElapsed >= (1 / regenRate) && state.energy < state.maxEnergy) {
+      state.energy = Math.min(state.maxEnergy, state.energy + 1);
+      state.lastEnergyTime = Date.now();
+    }
+  }
+
+  // Boss timer
+  if (state.isBoss && state.bossHP > 0) {
+    state.bossTimer -= dt;
+    state.bossAttackTimer -= dt;
+    if (state.bossAttackTimer <= 0) {
+      state.bossAttackTimer = 8;
+      bossAttack();
+    }
+    if (state.bossEffectTimer > 0) {
+      state.bossEffectTimer -= dt;
+      if (state.bossEffectTimer <= 0) state.bossEffect = null;
+    }
+    if (state.bossTimer <= 0) failBoss();
+  }
+
+  // Wither effect: drain energy
+  if (state.bossEffect === 'wither') {
+    state.energy = Math.max(0, state.energy - dt * 5);
+  }
+
+  // Pickaxe swing decay
+  if (pickaxeSwing > 0) pickaxeSwing -= dt * 4;
+  if (pickaxeSwing < 0) pickaxeSwing = 0;
+
+  // Update particles
+  particles = particles.filter(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.vx *= 0.98;
+    p.life -= p.decay;
+    return p.life > 0;
+  });
+
+  // Update floating texts
+  floatingTexts = floatingTexts.filter(ft => {
+    ft.y += ft.vy;
+    ft.life -= 0.02;
+    return ft.life > 0;
+  });
+
+  // Screen shake
+  if (state.screenShake > 0) state.screenShake *= 0.85;
+  if (state.screenShake < 0.5) state.screenShake = 0;
+
+  // Auto tap check
+  checkAutoTap();
+
+  // === Draw ===
+  ctx.save();
+  if (state.screenShake > 0) {
+    ctx.translate(
+      (Math.random() - 0.5) * state.screenShake * 2,
+      (Math.random() - 0.5) * state.screenShake * 2
+    );
+  }
+
+  if (state.screen === 'playing') {
+    drawBackground();
+
+    if (state.isBoss) {
+      drawBossSprite(BLOCK_X(), BLOCK_Y(), BLOCK_SIZE);
+    } else if (state.blockType >= 0) {
+      drawPixelBlock(BLOCK_X(), BLOCK_Y(), BLOCK_SIZE, state.blockType, state.crackStage);
+    }
+
+    drawPickaxeSwing();
+    if (state.bossEffect === 'darkness') drawDarknessEffect();
+    drawHUD();
+    drawParticles();
+    drawFloatingTexts();
+  }
+
+  ctx.restore();
+}
+
+// === Init ===
+loadGame();
+state.maxWorkers = 1 + (state.buildings.mineShaft || 0);
+state.maxEnergy = 100 + (state.buildings.farm || 0) * 5;
+
+// Check offline rewards
+checkOfflineRewards();
+
+// Start game loop
+requestAnimationFrame(gameLoop);
+
+// Auto-save every 30s
+setInterval(saveGame, 30000);
+</script>
+</body>
+</html>
