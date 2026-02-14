@@ -131,10 +131,48 @@ canvas{display:block;position:absolute;top:0;left:0;z-index:1}
 .screen-title{font-size:22px;font-weight:bold;margin-bottom:4px}
 .back-btn{position:absolute;top:12px;left:12px;padding:8px 14px;border:2px solid #555;background:rgba(40,40,60,0.6);color:var(--text);font-family:inherit;font-size:13px;cursor:pointer;z-index:11}
 .back-btn:active{background:rgba(80,80,100,0.6)}
+
+/* Airdrop Points Counter - Always Visible */
+#airdropCounter{position:fixed;top:0;right:0;z-index:50;padding:6px 14px;background:rgba(20,20,30,0.85);border-left:2px solid #ffd700;border-bottom:2px solid #ffd700;display:flex;flex-direction:column;align-items:flex-end;pointer-events:none}
+#airdropCounter .ap-label{font-size:8px;color:#b8960f;letter-spacing:1px;text-transform:uppercase}
+#airdropCounter .ap-value{font-size:16px;font-weight:bold;color:#ffd700;text-shadow:0 0 8px rgba(255,215,0,0.4)}
+.ap-float{position:fixed;z-index:51;font-size:14px;font-weight:bold;color:#ffd700;pointer-events:none;text-shadow:0 0 6px rgba(255,215,0,0.5);animation:apFloat 1.2s ease-out forwards}
+@keyframes apFloat{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-40px)}}
+
+/* Airdrop Screen */
+#airdropScreen{background:rgba(10,10,20,0.97)}
+.airdrop-content{width:92%;max-width:380px;max-height:75vh;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:14px;align-items:center}
+.ap-hero{font-size:18px;font-weight:bold;color:#ffd700;text-align:center;text-shadow:0 0 12px rgba(255,215,0,0.3)}
+.ap-sub{font-size:12px;color:#b8960f;text-align:center}
+.ap-total{font-size:36px;font-weight:bold;color:#ffd700;text-shadow:0 0 16px rgba(255,215,0,0.4)}
+.ap-total-label{font-size:11px;color:#888;margin-top:-6px}
+.ap-tier{width:100%;padding:12px;border:2px solid #ffd700;background:rgba(255,215,0,0.08);text-align:center}
+.ap-tier-badge{font-size:22px}
+.ap-tier-name{font-size:14px;font-weight:bold;color:#ffd700;margin-top:4px}
+.ap-tier-bar{width:100%;height:8px;background:#333;margin-top:8px;position:relative}
+.ap-tier-fill{height:100%;background:linear-gradient(90deg,#b8960f,#ffd700);transition:width 0.4s}
+.ap-tier-labels{display:flex;justify-content:space-between;font-size:9px;color:#666;margin-top:2px}
+.ap-breakdown{width:100%;display:flex;flex-direction:column;gap:6px}
+.ap-row{display:flex;justify-content:space-between;padding:6px 8px;border:1px solid #333;background:rgba(30,30,50,0.5);font-size:12px}
+.ap-row-label{color:#aaa}
+.ap-row-val{color:#ffd700;font-weight:bold}
+.ap-referral{width:100%;padding:12px;border:2px solid #ffd700;background:rgba(255,215,0,0.06);text-align:center}
+.ap-referral-title{font-size:14px;font-weight:bold;color:#ffd700;margin-bottom:6px}
+.ap-referral-link{font-size:10px;color:#b8960f;word-break:break-all;padding:6px;background:rgba(0,0,0,0.3);cursor:pointer;margin:6px 0}
+.ap-referral-count{font-size:12px;color:#888}
+.ap-disclaimer{font-size:9px;color:#555;text-align:center;margin-top:4px}
+.menu-btn.gold{border-color:#ffd700;color:#ffd700;background:rgba(255,215,0,0.1)}
+.menu-btn.gold:active{background:#ffd700;color:#000}
 </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+
+<!-- Airdrop Points Counter (always visible) -->
+<div id="airdropCounter">
+  <div class="ap-label">Airdrop</div>
+  <div class="ap-value">⛏️ <span id="apPoints">0</span> MINE</div>
+</div>
 
 <!-- Title Screen -->
 <div id="titleScreen" class="overlay">
@@ -147,6 +185,7 @@ canvas{display:block;position:absolute;top:0;left:0;z-index:1}
   <button class="menu-btn" onclick="showShop()">SHOP</button>
   <button class="menu-btn" onclick="showLeaderboard()">RANKS</button>
   <button class="menu-btn" onclick="showSettings()">SETTINGS</button>
+  <button class="menu-btn gold" onclick="showAirdrop()">AIRDROP</button>
   <div id="dailyBanner" style="margin-top:16px;padding:8px 16px;border:2px solid var(--gold);background:rgba(255,215,0,0.1);color:var(--gold);font-size:12px;cursor:pointer" onclick="showDailyReward()">Daily Reward Ready!</div>
 </div>
 
@@ -215,6 +254,13 @@ canvas{display:block;position:absolute;top:0;left:0;z-index:1}
   <div class="daily-title">Daily Reward</div>
   <div class="daily-days" id="dailyDays"></div>
   <button class="menu-btn" id="dailyClaimBtn" onclick="claimDaily()">CLAIM</button>
+</div>
+
+<!-- Airdrop Screen -->
+<div id="airdropScreen" class="overlay hidden">
+  <button class="back-btn" onclick="returnFromOverlay()">BACK</button>
+  <div class="screen-title" style="color:#ffd700">⛏️ Airdrop</div>
+  <div class="airdrop-content" id="airdropContent"></div>
 </div>
 
 <!-- Boss Intro -->
@@ -729,6 +775,9 @@ function tapMine(x, y) {
   playSound(isCrit ? 'crit' : 'tap');
   vibrate(isCrit ? 40 : 15);
 
+  // Airdrop: +1 per tap
+  addAirdropPoints(1, 'taps');
+
   if (state.blockHP <= 0) {
     breakBlock();
   }
@@ -866,6 +915,8 @@ function defeatBoss() {
   // Unlock next biome
   if (state.biome < 4) {
     state.biomesUnlocked[state.biome + 1] = true;
+    // Airdrop: +100 for biome completion
+    addAirdropPoints(100, 'biomes');
   }
 
   // Rewards
@@ -873,6 +924,9 @@ function defeatBoss() {
   for (const [r, a] of Object.entries(rewards)) {
     state.resources[r] += a;
   }
+
+  // Airdrop: +200 for boss defeat
+  addAirdropPoints(200, 'bosses');
 
   playSound('bossdefeat');
   state.screenShake = 15;
@@ -1014,6 +1068,7 @@ function showCrafting() {
         e.stopPropagation();
         payCost(p.recipe);
         state.pickaxe = i;
+        addAirdropPoints(25, 'crafts');
         playSound('craft');
         saveGame();
         showCrafting();
@@ -1046,6 +1101,7 @@ function showBuilding() {
       card.onclick = () => {
         payCost(cost);
         state.buildings[key] = level + 1;
+        addAirdropPoints(50, 'builds');
         // Update derived stats
         state.maxWorkers = 1 + (state.buildings.mineShaft || 0);
         state.maxEnergy = 100 + (state.buildings.farm || 0) * 5;
@@ -1250,6 +1306,9 @@ function claimDaily() {
   state.dailyStreak++;
   state.lastDailyDate = today;
 
+  // Airdrop: +50 for daily login
+  addAirdropPoints(50, 'daily');
+
   playSound('collect');
   saveGame();
   showTitle();
@@ -1362,6 +1421,8 @@ async function handleReferral(referrerId) {
   if (state.pickaxe >= 3) return; // Already has iron pickaxe
   state.pickaxe = Math.max(state.pickaxe, 3);
   state.resources[RES.stone] += 1000;
+  state.referrals = (state.referrals || 0) + 1;
+  addAirdropPoints(500, 'referrals');
   saveGame();
   try {
     await fetch('/api/leaderboard', {
@@ -2006,8 +2067,109 @@ function gameLoop(now) {
   ctx.restore();
 }
 
+// === Airdrop Points System ===
+let airdropPoints = 0;
+let airdropStats = { taps: 0, biomes: 0, daily: 0, bosses: 0, crafts: 0, builds: 0, referrals: 0 };
+
+function loadAirdrop() {
+  try {
+    const p = localStorage.getItem('mineworld_airdrop_points');
+    if (p) airdropPoints = parseInt(p) || 0;
+    const s = JSON.parse(localStorage.getItem('mineworld_airdrop_stats'));
+    if (s) airdropStats = { ...airdropStats, ...s };
+  } catch (e) {}
+  updateAirdropUI();
+}
+
+function saveAirdrop() {
+  localStorage.setItem('mineworld_airdrop_points', airdropPoints);
+  localStorage.setItem('mineworld_airdrop_stats', JSON.stringify(airdropStats));
+}
+
+function addAirdropPoints(amount, category) {
+  airdropPoints += amount;
+  if (category && airdropStats.hasOwnProperty(category)) airdropStats[category] += amount;
+  updateAirdropUI();
+  showAirdropFloat(amount);
+  saveAirdrop();
+}
+
+function updateAirdropUI() {
+  const el = document.getElementById('apPoints');
+  if (el) el.textContent = airdropPoints.toLocaleString();
+}
+
+function showAirdropFloat(amount) {
+  const counter = document.getElementById('airdropCounter');
+  if (!counter) return;
+  const rect = counter.getBoundingClientRect();
+  const f = document.createElement('div');
+  f.className = 'ap-float';
+  f.textContent = `+${amount} MINE`;
+  f.style.right = '14px';
+  f.style.top = (rect.bottom + 4) + 'px';
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 1300);
+}
+
+function getAirdropTier(pts) {
+  if (pts > 100000) return { badge: '💎', name: 'Diamond Hands', min: 100001, max: Infinity, next: null };
+  if (pts > 10000) return { badge: '🥇', name: 'Excavator', min: 10001, max: 100000, next: 'Diamond Hands' };
+  if (pts > 1000) return { badge: '🥈', name: 'Prospector', min: 1001, max: 10000, next: 'Excavator' };
+  return { badge: '🥉', name: 'Miner', min: 0, max: 1000, next: 'Prospector' };
+}
+
+function showAirdrop() {
+  hideAllOverlays();
+  document.getElementById('airdropScreen').classList.remove('hidden');
+  const c = document.getElementById('airdropContent');
+  const tier = getAirdropTier(airdropPoints);
+  const pct = tier.max === Infinity ? 100 : Math.min(100, ((airdropPoints - tier.min) / (tier.max - tier.min + 1)) * 100);
+  const userId = tgUserId || 'unknown';
+  const refLink = `https://t.me/MineWorldBot?start=ref_${userId}`;
+  const friendCount = state.referrals || 0;
+  c.innerHTML = `
+    <div class="ap-hero">🚀 $MINE Token Airdrop Coming Soon!</div>
+    <div class="ap-sub">Every point = future $MINE tokens</div>
+    <div class="ap-total">${airdropPoints.toLocaleString()}</div>
+    <div class="ap-total-label">MINE POINTS</div>
+    <div class="ap-tier">
+      <div class="ap-tier-badge">${tier.badge}</div>
+      <div class="ap-tier-name">${tier.name}</div>
+      <div class="ap-tier-bar"><div class="ap-tier-fill" style="width:${pct}%"></div></div>
+      <div class="ap-tier-labels"><span>${tier.min.toLocaleString()}</span><span>${tier.max === Infinity ? '∞' : tier.max.toLocaleString()}</span></div>
+      ${tier.next ? `<div style="font-size:10px;color:#888;margin-top:4px">Next: ${tier.next}</div>` : '<div style="font-size:10px;color:#ffd700;margin-top:4px">MAX TIER! 🏆</div>'}
+    </div>
+    <div class="ap-breakdown">
+      <div style="font-size:13px;font-weight:bold;color:#ffd700;margin-bottom:2px">Points Breakdown</div>
+      <div class="ap-row"><span class="ap-row-label">⛏️ Mining taps</span><span class="ap-row-val">${airdropStats.taps.toLocaleString()}</span></div>
+      <div class="ap-row"><span class="ap-row-label">🌍 Biome completions</span><span class="ap-row-val">${airdropStats.biomes.toLocaleString()}</span></div>
+      <div class="ap-row"><span class="ap-row-label">📅 Daily logins</span><span class="ap-row-val">${airdropStats.daily.toLocaleString()}</span></div>
+      <div class="ap-row"><span class="ap-row-label">👹 Boss victories</span><span class="ap-row-val">${airdropStats.bosses.toLocaleString()}</span></div>
+      <div class="ap-row"><span class="ap-row-label">🔨 Crafting</span><span class="ap-row-val">${airdropStats.crafts.toLocaleString()}</span></div>
+      <div class="ap-row"><span class="ap-row-label">🏗️ Building</span><span class="ap-row-val">${airdropStats.builds.toLocaleString()}</span></div>
+      <div class="ap-row"><span class="ap-row-label">👥 Referrals</span><span class="ap-row-val">${airdropStats.referrals.toLocaleString()}</span></div>
+    </div>
+    <div class="ap-referral">
+      <div class="ap-referral-title">👥 Invite friends, earn 500 MINE points each!</div>
+      <div class="ap-referral-link" onclick="copyRefLink()">${refLink}<br><span style="color:#ffd700;font-size:9px">TAP TO COPY</span></div>
+      <div class="ap-referral-count">Friends invited: ${friendCount}</div>
+    </div>
+    <div class="ap-disclaimer">Points will convert to $MINE tokens at TGE. Stay tuned!</div>
+  `;
+}
+
+function copyRefLink() {
+  const link = `https://t.me/MineWorldBot?start=ref_${tgUserId || 'unknown'}`;
+  navigator.clipboard?.writeText(link).then(() => {
+    const el = document.querySelector('.ap-referral-link');
+    if (el) { el.style.borderColor = '#ffd700'; el.innerHTML = '✅ Copied!<br><span style="color:#ffd700;font-size:9px">SHARE WITH FRIENDS</span>'; }
+  }).catch(() => {});
+}
+
 // === Init ===
 loadGame();
+loadAirdrop();
 state.maxWorkers = 1 + (state.buildings.mineShaft || 0);
 state.maxEnergy = 100 + (state.buildings.farm || 0) * 5;
 
